@@ -89,12 +89,16 @@ function setTokenPosition(tokenEl, stepPos) {
   const lineEl = tokenEl.parentElement;
   const rect = lineEl.getBoundingClientRect();
   const tokenRect = tokenEl.getBoundingClientRect();
+
   const maxLeft = rect.width - tokenRect.width;
 
+  // 🔁 INVERT DIRECTION: 0 = right, STEPS = left
   const frac = stepPos / STEPS;
-  const leftPx = clamp(frac * maxLeft, 0, maxLeft);
+  const leftPx = clamp(maxLeft - (frac * maxLeft), 0, maxLeft);
+
   tokenEl.style.left = `${leftPx}px`;
 }
+
 
 function updateTopUI() {
   roundInfoEl.textContent = `Round ${round} / ${TOTAL_ROUNDS}`;

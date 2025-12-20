@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wordway Racers</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <header class="topbar">
+      <button id="modeToggle" class="pill">JP → Romaji</button>
+      <div id="roundInfo" class="round">Round 1 / 20</div>
+      <div id="scoreInfo" class="score">Score: 0</div>
+    </header>
+
+    <section class="highway" aria-label="Highway">
+      <div class="lanes" id="lanes">
+        <div class="lane"></div>
+        <div class="lane"></div>
+        <div class="lane"></div>
+      </div>
+
+      <div class="impact" aria-hidden="true"></div>
+
+      <div id="fallingWord" class="word">置く</div>
+
+      <!-- purely visual "car" sitting above impact line -->
+      <div class="playerCarVisual" aria-hidden="true">🚗</div>
+    </section>
+
+    <section class="answers" id="answers" aria-label="Answers"></section>
+
+    <section class="raceWrap" aria-label="Race Track">
+      <div class="raceTitle">🏁 Race</div>
+
+      <div class="raceTrack" id="raceTrack">
+        <div class="raceLane">
+          <div class="laneLabel">You</div>
+          <div class="trackLine">
+            <div class="carToken" id="playerToken">🚗</div>
+          </div>
+        </div>
+
+        <div class="raceLane">
+          <div class="laneLabel">Rival</div>
+          <div class="trackLine">
+            <div class="carToken" id="rivalToken">🏎️</div>
+          </div>
+        </div>
+
+        <div class="trackEnds" aria-hidden="true">
+          <span>START</span>
+          <span>FINISH</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true">
+    <div class="panel" id="panel"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

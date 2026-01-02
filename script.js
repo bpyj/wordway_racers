@@ -2,12 +2,12 @@
 // DATA (your list)
 // =====================
 const WORDS = [
-  { jp: "置く", romaji: "oku", seen: 0 },
-  { jp: "使う", romaji: "tsukau", seen: 0 },
-  { jp: "聞く", romaji: "kiku", seen: 0 },
-  { jp: "数える", romaji: "kazoeru", seen: 0 },
-  { jp: "大体", romaji: "daitai", seen: 0 },
-  { jp: "丁寧", romaji: "teinei", seen: 0 }
+  { jp: "看见", romaji: "see", seen: 0 },
+  { jp: "和我", romaji: "with me", seen: 0 },
+  { jp: "都是", romaji: "are all", seen: 0 },
+  { jp: "朋友", romaji: "friends", seen: 0 },
+  { jp: "出去", romaji: "go out", seen: 0 },
+  { jp: "我就", romaji: "I will", seen: 0 }
 ];
 
 // =====================
@@ -17,8 +17,8 @@ const TOTAL_ROUNDS = 20;
 const STEPS = 20; // ✅ finish line steps
 
 // Falling: base px/sec + per-seen increment (capped)
-const BASE_FALL_SPEED = 140;     // slower (kid-friendly)
-const PER_SEEN_SPEED = 70;       // repeats get faster
+const BASE_FALL_SPEED = 30;     // slower (kid-friendly)
+const PER_SEEN_SPEED = 30;       // repeats get faster
 const MAX_FALL_SPEED = 580;      // cap
 
 // Impact threshold (px from top in highway area)

@@ -45,7 +45,7 @@
         <div class="raceLane">
           <div class="laneLabel">Rival</div>
           <div class="trackLine">
-            <div class="carToken" id="rivalToken">🏎️</div>
+            <div class="carToken" id="rivalToken">🚙</div>
           </div>
         </div>
 
@@ -57,6 +57,14 @@
     </section>
   </main>
 
+  <!-- ✅ NEW: START FLOW OVERLAY (car select + practice) -->
+  <div class="overlay" id="startOverlay" role="dialog" aria-modal="true">
+    <div class="panel startPanel" id="startPanel">
+      <!-- Step content is injected by script.js -->
+    </div>
+  </div>
+
+  <!-- EXISTING END GAME OVERLAY -->
   <div class="overlay" id="overlay" role="dialog" aria-modal="true">
     <div class="panel" id="panel"></div>
   </div>

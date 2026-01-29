@@ -225,3 +225,168 @@ body{
   padding:10px 18px;
   cursor:pointer;
 }
+
+/* =========================
+   START FLOW (car + practice)
+   ========================= */
+
+.startPanel{
+  width:min(760px, 94vw);
+  text-align:left;
+}
+
+.startTitle{
+  font-size:22px;
+  font-weight:900;
+  margin:0 0 10px;
+}
+
+.startSub{
+  margin:0 0 14px;
+  color:#666;
+  font-weight:800;
+}
+
+.carGrid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);  /* ✅ 3 columns */
+  gap:14px;
+  margin:14px 0 18px;
+}
+
+
+.carBtn{
+  border:3px solid var(--btnBorder);
+  background:#ffffff;              /* force white */
+  border-radius:28px;
+  padding:18px 10px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:90px;                /* ✅ big card */
+  box-shadow:0 8px 18px rgba(0,0,0,0.10);
+  transition:all 120ms ease;
+  overflow:hidden;            /* important for scaled emoji */
+}
+
+.carBtn .emoji{
+  display:block;
+  font-size:1px;              /* trick the font */
+  transform: scale(2.2);      /* REAL visual size control */
+  transform-origin:center;
+  line-height:1;
+}
+
+
+
+/* so clicking emoji still selects */
+.carBtn *{ pointer-events:none; }
+
+.carBtn.selected{
+  border-color:#1e88e5;
+  background:#e3f2fd;
+  box-shadow:0 14px 30px rgba(30,136,229,0.28);
+  transform:translateY(-3px);
+}
+
+.carBtn:active{
+  transform:translateY(-1px) scale(0.98);
+}
+
+
+.carBtn .emoji{ font-size:26px; }
+.carBtn.selected{
+  border-color:#42a5f5;
+  box-shadow:0 6px 14px rgba(0,0,0,0.10);
+  transform:translateY(-1px);
+}
+
+.practiceWrap{
+  margin-top:6px;
+}
+
+.practiceHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:6px 0 10px;
+}
+
+.practiceHint{
+  font-weight:900;
+  color:#4b6b7a;
+}
+
+.pairsGrid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:10px;
+}
+
+.pairCol{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.pairBtn{
+  border:2px solid #e6e8ef;
+  background:#fff;
+  border-radius:14px;
+  padding:10px 10px;      /* ✅ smaller */
+  font-size:17px;
+  font-weight:900;
+  cursor:pointer;
+  text-align:center;
+  user-select:none;
+  width:75%;              /* ✅ narrower button */
+  margin:0 auto;          /* center inside column */
+  transition:transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.pairBtn:active{ transform:scale(0.99); }
+
+.pairBtn.active{
+  border-color:#42a5f5;
+  background:#e3f2fd;
+}
+
+.pairBtn.matched{
+  border-color:var(--ok);
+  background:rgba(129,199,132,0.25);
+  color:#1a1a1a;
+  cursor:default;
+  opacity:0.9;
+}
+
+.pairBtn.wrongFlash{
+  border-color:var(--bad);
+  background:rgba(229,115,115,0.25);
+}
+
+.startActions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:14px;
+}
+
+.actionBtn{
+  border:none;
+  background:#64b5f6;
+  color:#fff;
+  font-weight:900;
+  border-radius:999px;
+  padding:10px 16px;
+  cursor:pointer;
+}
+.actionBtn.secondary{
+  background:#90a4ae;
+}
+.actionBtn:disabled{
+  opacity:0.5;
+  cursor:not-allowed;
+}

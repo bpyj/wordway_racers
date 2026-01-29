@@ -4,7 +4,7 @@
 const WORDS = [
   { jp: "看见", romaji: "see", seen: 0 },
   { jp: "和我", romaji: "with me", seen: 0 },
-  { jp: "都是", romaji: "are all", seen: 0 },
+  { jp: "都是", romaji: "(we) are all", seen: 0 },
   { jp: "朋友", romaji: "friends", seen: 0 },
   { jp: "出去", romaji: "go out", seen: 0 },
   { jp: "我就", romaji: "I will", seen: 0 }
@@ -14,20 +14,19 @@ const WORDS = [
 // CONFIG
 // =====================
 const TOTAL_ROUNDS = 20;
-const STEPS = 20; // ✅ finish line steps
+const STEPS = 20;
 
 // Falling: base px/sec + per-seen increment (capped)
-const BASE_FALL_SPEED = 30;     // slower (kid-friendly)
-const PER_SEEN_SPEED = 30;       // repeats get faster
-const MAX_FALL_SPEED = 580;      // cap
+const BASE_FALL_SPEED = 30;
+const PER_SEEN_SPEED = 30;
+const MAX_FALL_SPEED = 580;
 
-// Impact threshold (px from top in highway area)
 let IMPACT_Y = 240;
 
 // =====================
 // STATE
 // =====================
-let modeJP = true;          // true: JP falls -> choose romaji
+let modeJP = true;
 let round = 1;
 let score = 0;
 
@@ -39,12 +38,17 @@ let running = false;
 let animId = null;
 let lastT = 0;
 
-// Racing positions (steps)
 let playerPos = 0;
 let rivalPos = 0;
 
-// Wrong penalty only once per round
 let wrongPenaltyUsed = false;
+
+// --- New: car choice + practice ---
+const CAR_CHOICES = ["🚗", "🚙", "🚕", "🏎️", "🚑", "🚚"];
+let playerCarEmoji = "🚗";
+
+let practiceMatched = new Set();
+let firstPick = null; // { side: 'L'|'R', id, el }
 
 // =====================
 // ELEMENTS
@@ -61,6 +65,11 @@ const panelEl = document.getElementById("panel");
 
 const playerTokenEl = document.getElementById("playerToken");
 const rivalTokenEl = document.getElementById("rivalToken");
+const playerCarVisualEl = document.querySelector(".playerCarVisual");
+
+// NEW overlay nodes (must exist in index.html)
+const startOverlayEl = document.getElementById("startOverlay");
+const startPanelEl = document.getElementById("startPanel");
 
 // =====================
 // HELPERS
@@ -92,13 +101,12 @@ function setTokenPosition(tokenEl, stepPos) {
 
   const maxLeft = rect.width - tokenRect.width;
 
-  // 🔁 INVERT DIRECTION: 0 = right, STEPS = left
+  // 0 = right, STEPS = left
   const frac = stepPos / STEPS;
   const leftPx = clamp(maxLeft - (frac * maxLeft), 0, maxLeft);
 
   tokenEl.style.left = `${leftPx}px`;
 }
-
 
 function updateTopUI() {
   roundInfoEl.textContent = `Round ${round} / ${TOTAL_ROUNDS}`;
@@ -106,9 +114,210 @@ function updateTopUI() {
   modeToggleEl.textContent = modeJP ? "JP → Romaji" : "Romaji → JP";
 }
 
+function applyCarChoice() {
+  playerTokenEl.textContent = playerCarEmoji;
+  if (playerCarVisualEl) playerCarVisualEl.textContent = playerCarEmoji;
+}
+
 function updateRaceUI() {
+  applyCarChoice();
   setTokenPosition(playerTokenEl, playerPos);
   setTokenPosition(rivalTokenEl, rivalPos);
+}
+
+// =====================
+// START FLOW: overlay steps
+// =====================
+function showStartOverlay() {
+  // stop game
+  running = false;
+  cancelAnimationFrame(animId);
+
+  // hide end overlay if any
+  overlayEl.style.display = "none";
+
+  if (!startOverlayEl || !startPanelEl) {
+    // If user forgot to add start overlay in index.html, fall back to game
+    resetGame();
+    return;
+  }
+
+  startOverlayEl.style.display = "flex";
+  renderCarSelectStep();
+}
+
+function renderCarSelectStep() {
+  startPanelEl.innerHTML = `
+    <h2 class="startTitle">Choose your car</h2>
+    <p class="startSub">Pick a car you like, then we’ll do a quick matching warm-up.</p>
+
+    <div class="carGrid" id="carGrid"></div>
+
+    <div class="startActions">
+      <button class="actionBtn" id="carNext" disabled>Next</button>
+    </div>
+  `;
+
+  const grid = document.getElementById("carGrid");
+  const nextBtn = document.getElementById("carNext");
+
+  let selected = null;
+
+  CAR_CHOICES.forEach(emoji => {
+    const b = document.createElement("button");
+    b.className = "carBtn";
+    b.innerHTML = `<span class="emoji">${emoji}</span>`;
+    b.addEventListener("click", () => {
+      selected = emoji;
+      playerCarEmoji = emoji;
+      applyCarChoice();
+
+      [...grid.querySelectorAll(".carBtn")].forEach(x => x.classList.remove("selected"));
+      b.classList.add("selected");
+
+      nextBtn.disabled = false;
+    });
+    grid.appendChild(b);
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (!selected) return;
+    renderPracticeStep();
+  });
+}
+
+function buildPracticePairs() {
+  // LEFT = Chinese, RIGHT = English
+  const base = WORDS.map((w, idx) => ({
+    id: String(idx),
+    left: w.jp,        // ✅ Chinese on left
+    right: w.romaji    // ✅ English on right
+  }));
+
+  const leftShuf = shuffle(base.map(x => ({ id: x.id, text: x.left })));
+  const rightShuf = shuffle(base.map(x => ({ id: x.id, text: x.right })));
+
+  return { leftShuf, rightShuf, total: base.length };
+}
+
+function renderPracticeStep() {
+  const { leftShuf, rightShuf, total } = buildPracticePairs();
+  practiceMatched = new Set();
+  firstPick = null;
+
+  startPanelEl.innerHTML = `
+    <h2 class="startTitle">Tap the matching pairs</h2>
+
+    <div class="practiceHeader">
+      <div class="practiceHint">Match the English with the Chinese</div>
+      <div><strong id="pairCount">0</strong> / ${total} matched</div>
+    </div>
+
+    <div class="pairsGrid">
+      <div class="pairCol" id="leftCol"></div>
+      <div class="pairCol" id="rightCol"></div>
+    </div>
+
+    <div class="startActions">
+      <button class="actionBtn secondary" id="backToCars">Back</button>
+      <button class="actionBtn" id="continueBtn" disabled>Continue</button>
+    </div>
+  `;
+
+  const leftCol = document.getElementById("leftCol");
+  const rightCol = document.getElementById("rightCol");
+  const pairCountEl = document.getElementById("pairCount");
+  const continueBtn = document.getElementById("continueBtn");
+
+  function updateMatchedUI() {
+    pairCountEl.textContent = String(practiceMatched.size);
+    continueBtn.disabled = practiceMatched.size !== total;
+  }
+
+  function clearActive() {
+    [...startPanelEl.querySelectorAll(".pairBtn")].forEach(b => b.classList.remove("active"));
+    firstPick = null;
+  }
+
+  function flashWrong(a, b) {
+    a.classList.add("wrongFlash");
+    b.classList.add("wrongFlash");
+    setTimeout(() => {
+      a.classList.remove("wrongFlash");
+      b.classList.remove("wrongFlash");
+    }, 220);
+  }
+
+  function handlePick(side, id, el) {
+    if (practiceMatched.has(id)) return;
+
+    // toggle off same button
+    if (firstPick && firstPick.el === el) {
+      clearActive();
+      return;
+    }
+
+    if (!firstPick) {
+      firstPick = { side, id, el };
+      el.classList.add("active");
+      return;
+    }
+
+    // if same column, switch selection
+    if (firstPick.side === side) {
+      firstPick.el.classList.remove("active");
+      firstPick = { side, id, el };
+      el.classList.add("active");
+      return;
+    }
+
+    // compare ids
+    const a = firstPick;
+    const b = { side, id, el };
+
+    if (a.id === b.id) {
+      a.el.classList.remove("active");
+      b.el.classList.remove("active");
+
+      a.el.classList.add("matched");
+      b.el.classList.add("matched");
+      a.el.disabled = true;
+      b.el.disabled = true;
+
+      practiceMatched.add(id);
+      firstPick = null;
+      updateMatchedUI();
+      return;
+    }
+
+    flashWrong(a.el, b.el);
+    clearActive();
+  }
+
+  leftShuf.forEach(item => {
+    const btn = document.createElement("button");
+    btn.className = "pairBtn";
+    btn.textContent = item.text;
+    btn.addEventListener("click", () => handlePick("L", item.id, btn));
+    leftCol.appendChild(btn);
+  });
+
+  rightShuf.forEach(item => {
+    const btn = document.createElement("button");
+    btn.className = "pairBtn";
+    btn.textContent = item.text;
+    btn.addEventListener("click", () => handlePick("R", item.id, btn));
+    rightCol.appendChild(btn);
+  });
+
+  document.getElementById("backToCars").addEventListener("click", renderCarSelectStep);
+
+  continueBtn.addEventListener("click", () => {
+    startOverlayEl.style.display = "none";
+    resetGame(); // start real gameplay
+  });
+
+  updateMatchedUI();
 }
 
 // =====================
@@ -117,7 +326,6 @@ function updateRaceUI() {
 function declareWinnerByFinish(who) {
   endGame(who === "player" ? "player_finish" : "rival_finish");
 }
-
 function declareWinnerByDistance() {
   endGame("distance");
 }
@@ -132,7 +340,7 @@ function resetGame() {
   rivalPos = 0;
   currentWord = null;
 
-  WORDS.forEach(w => w.seen = 0);
+  WORDS.forEach(w => (w.seen = 0));
 
   overlayEl.style.display = "none";
   running = true;
@@ -159,7 +367,6 @@ function pickNextWord() {
 function spawnRound() {
   if (!running) return;
 
-  // If we already finished all rounds (safety)
   if (round > TOTAL_ROUNDS) {
     declareWinnerByDistance();
     return;
@@ -168,7 +375,7 @@ function spawnRound() {
   wrongPenaltyUsed = false;
 
   currentWord = pickNextWord();
-  currentWord.seen += 1; // repeats speed up regardless of outcome
+  currentWord.seen += 1;
 
   fallSpeed = clamp(
     BASE_FALL_SPEED + (currentWord.seen - 1) * PER_SEEN_SPEED,
@@ -209,38 +416,25 @@ function buildChoices3() {
   });
 }
 
-// ---------- Round-ending helpers ----------
 function endRound({ rivalMoves }) {
-  // Stop falling immediately
   cancelAnimationFrame(animId);
 
-  // Rival movement is conditional now
   if (rivalMoves) {
     rivalPos = clamp(rivalPos + 1, 0, STEPS);
   }
 
   updateRaceUI();
 
-  // Check finish-line win conditions immediately
-  if (playerPos >= STEPS) {
-    declareWinnerByFinish("player");
-    return;
-  }
-  if (rivalPos >= STEPS) {
-    declareWinnerByFinish("rival");
-    return;
-  }
+  if (playerPos >= STEPS) return declareWinnerByFinish("player");
+  if (rivalPos >= STEPS) return declareWinnerByFinish("rival");
 
-  // Advance rounds
   round += 1;
 
   if (round > TOTAL_ROUNDS) {
-    // Nobody finished by round 20 -> distance winner
     declareWinnerByDistance();
     return;
   }
 
-  // Start next round
   lastT = 0;
   animId = requestAnimationFrame(tick);
   spawnRound();
@@ -250,14 +444,12 @@ function handleChoice(chosenWord, btn) {
   if (!running) return;
 
   if (chosenWord === currentWord) {
-    // ✅ Correct: player +2, round ends, rival does NOT move
     score += 1;
     playerPos = clamp(playerPos + 2, 0, STEPS);
 
     btn.classList.add("correct");
     wordEl.classList.add("pop");
 
-    // End round shortly after pop for nice feel
     running = false;
     setTimeout(() => {
       running = true;
@@ -269,26 +461,20 @@ function handleChoice(chosenWord, btn) {
     return;
   }
 
-  // ❌ Wrong: player -1 only once per round; rival +1 only when that penalty happens
   btn.classList.add("wrong");
 
   if (!wrongPenaltyUsed) {
     wrongPenaltyUsed = true;
 
     playerPos = clamp(playerPos - 1, 0, STEPS);
-    rivalPos = clamp(rivalPos + 1, 0, STEPS); // ✅ rival moves on mistake
+    rivalPos = clamp(rivalPos + 1, 0, STEPS);
 
     updateRaceUI();
 
-    // Check if rival reached finish due to this mistake
-    if (rivalPos >= STEPS) {
-      declareWinnerByFinish("rival");
-      return;
-    }
+    if (rivalPos >= STEPS) return declareWinnerByFinish("rival");
   }
 }
 
-// Miss: ends round; rival moves +1; player no penalty (kid-friendly default)
 function miss() {
   if (!running) return;
 
@@ -335,7 +521,6 @@ function endGame(reason) {
   } else if (reason === "rival_finish") {
     outcome = "Rival wins! 🙂 (Rival reached the finish line first)";
   } else {
-    // distance winner after round 20
     if (playerPos > rivalPos) outcome = "You win! 🎉 (Closer to finish after 20 rounds)";
     else if (playerPos < rivalPos) outcome = "Rival wins! 🙂 (Closer to finish after 20 rounds)";
     else outcome = "It’s a tie! 🤝 (Same distance after 20 rounds)";
@@ -350,7 +535,12 @@ function endGame(reason) {
     <button id="playAgain">Play Again</button>
   `;
 
-  document.getElementById("playAgain").onclick = resetGame;
+  document.getElementById("playAgain").onclick = () => {
+    // show car + practice again on replay:
+    showStartOverlay();
+    // if you want instant replay instead, use:
+    // resetGame();
+  };
 }
 
 // =====================
@@ -358,7 +548,7 @@ function endGame(reason) {
 // =====================
 modeToggleEl.addEventListener("click", () => {
   modeJP = !modeJP;
-  resetGame(); // reset immediately on switch
+  resetGame();
 });
 
 window.addEventListener("resize", () => {
@@ -368,4 +558,5 @@ window.addEventListener("resize", () => {
 
 // init
 document.documentElement.style.setProperty("--steps", String(STEPS));
-resetGame();
+applyCarChoice();
+showStartOverlay();
